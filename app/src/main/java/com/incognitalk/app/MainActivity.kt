@@ -37,11 +37,16 @@ fun IncogniTalkNavHost() {
             )
         }
         composable<Destinations.Info> {
-            InformationScreen()
+            InformationScreen(
+                onBackClick = { navController.popBackStack() }
+            )
         }
         composable<Destinations.Chat> {
             val args = it.toRoute<Destinations.Chat>()
-            ChatScreen(chatName = args.chatName)
+            ChatScreen(
+                chatName = args.chatName,
+                onBackClick = { navController.popBackStack() }
+            )
         }
     }
 }
