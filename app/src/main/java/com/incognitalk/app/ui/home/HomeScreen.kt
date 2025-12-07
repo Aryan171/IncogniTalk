@@ -1,20 +1,23 @@
 package com.incognitalk.app.ui.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -42,10 +45,7 @@ fun HomeScreen(
                 title = { Text("IncogniTalk", color = MaterialTheme.colorScheme.primary) },
                 actions = {
                     IconButton(onClick = onInfoClick) {
-                        Spacer(
-                            modifier = Modifier.size(12.dp)
-                                .background(Color.Black)
-                        )
+                        Icon(Icons.Outlined.Info, contentDescription = "Info")
                     }
                 }
             )
@@ -58,7 +58,16 @@ fun HomeScreen(
                 placeholder = { Text("Search or start a new chat") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp)
+                    .padding(8.dp),
+                shape = CircleShape,
+                colors = TextFieldDefaults.colors(
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                ),
+                leadingIcon = {
+                    Icon(Icons.Outlined.Search, contentDescription = "Search Icon")
+                }
             )
 
             if (searchResults.isEmpty()) {
@@ -82,8 +91,8 @@ fun HomeScreen(
                                 .clickable { onChatClick(chat.name) }
                                 .padding(16.dp)
                         ) {
-                            if (chat.lastMessage == "New user") {
-                                Text("New user found:", style = MaterialTheme.typography.bodySmall)
+                            if (chat.isNewUser) {
+                                Text("Start a new chat", style = MaterialTheme.typography.bodySmall)
                             }
                             Text(text = chat.name)
                             Text(text = chat.lastMessage)

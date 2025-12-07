@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.stateIn
 
 // A dummy data class for chat items.
 // In a real app, you would have a more complex model.
-data class Chat(val id: String, val name: String, val lastMessage: String)
+data class Chat(val id: String, val name: String, val lastMessage: String, val isNewUser: Boolean = false)
 
 class HomeScreenViewModel : ViewModel() {
 
@@ -28,7 +28,7 @@ class HomeScreenViewModel : ViewModel() {
     // A dummy function to simulate searching for new people.
     private fun findNewPeople(query: String): List<Chat> {
         if (query.equals("Charlie", ignoreCase = true)) {
-            return listOf(Chat("3", "Charlie", "New user"))
+            return listOf(Chat("3", "Charlie", "New user", true))
         }
         return emptyList()
     }
