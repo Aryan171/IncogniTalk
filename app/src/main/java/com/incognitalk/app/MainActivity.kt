@@ -3,45 +3,45 @@ package com.incognitalk.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import com.incognitalk.app.ui.chat.ChatScreen
+import com.incognitalk.app.ui.home.HomeScreen
+import com.incognitalk.app.ui.information.InformationScreen
+import com.incognitalk.app.ui.navigation.Destinations
 import com.incognitalk.app.ui.theme.IncogniTalkTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             IncogniTalkTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                IncogniTalkNavHost()
             }
         }
     }
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+fun IncogniTalkNavHost() {
+    val navController = rememberNavController()
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    IncogniTalkTheme {
-        Greeting("Android")
+    NavHost(navController = navController, startDestination = Destinations.Home) {
+        composable<Destinations.Home> {
+            HomeScreen(
+                onInfoClick = { navController.navigate(Destinations.Info) },
+                onChatClick = { chatName -> navController.navigate(Destinations.Chat(chatName)) }
+            )
+        }
+        composable<Destinations.Info> {
+            InformationScreen()
+        }
+        composable<Destinations.Chat> {
+            val args = it.toRoute<Destinations.Chat>()
+            ChatScreen(chatName = args.chatName)
+        }
     }
 }
