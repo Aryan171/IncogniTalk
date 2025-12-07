@@ -30,6 +30,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -109,6 +110,16 @@ fun ChatScreen(
 fun MessageBox(
     message: MessageItem
 ) {
+    val round = 24.dp
+    val sharp = 4.dp
+
+    val messageBoxShape = RoundedCornerShape(
+        topStart = if (!message.isFromMe) sharp else round,
+        topEnd = if (message.isFromMe) sharp else round,
+        bottomStart = round,
+        bottomEnd = round
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -117,15 +128,11 @@ fun MessageBox(
     ) {
         Box(
             modifier = Modifier
+                .shadow(elevation = 6.dp, shape = messageBoxShape)
                 .background(
                     color = if (message.isFromMe) MaterialTheme.colorScheme.primaryContainer
                     else MaterialTheme.colorScheme.tertiaryContainer,
-                    shape = RoundedCornerShape(
-                        topStart = if (!message.isFromMe) 4.dp else 16.dp,
-                        topEnd = if (message.isFromMe) 4.dp else 16.dp,
-                        bottomStart = 16.dp,
-                        bottomEnd = 16.dp
-                    )
+                    shape = messageBoxShape
                 )
                 .padding(12.dp)
         ) {
