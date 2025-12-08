@@ -104,11 +104,4 @@ class ChatViewModel(
             chatRepository.insertMessage(message)
         }
     }
-
-    override fun onCleared() {
-        super.onCleared()
-        // In a real app, you might want to call stop() from the Application's lifecycle events
-        // to keep the connection alive between screens. For now, we stop it when the viewmodel is cleared.
-        ChatSocketRepository.stop()
-    }
 }

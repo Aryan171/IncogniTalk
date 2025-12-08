@@ -103,7 +103,7 @@ fun ChatScreen(
                 trailingIcon = {
                     if(newMessageText.isNotBlank()) {
                         IconButton(
-                            onClick = { chatViewModel.sendMessage(recipientId = chatName) }
+                            onClick = { chatViewModel.sendMessage() }
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Send,

@@ -11,6 +11,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.incognitalk.app.data.database.IncogniTalkDatabase
+import com.incognitalk.app.data.repository.ChatRepository
 import com.incognitalk.app.ui.chat.ChatScreen
 import com.incognitalk.app.ui.chat.ChatViewModel
 import com.incognitalk.app.ui.chat.ChatViewModelFactory
@@ -34,8 +36,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun IncogniTalkNavHost() {
     val navController = rememberNavController()
+    val context = LocalContext.current
 
-    val homeViewModel: HomeScreenViewModel = viewModel()
+    val db = IncogniTalkDatabase.getDatabase(context)
+    val chatRepository = ChatRepository(db.chatDao(), db.messageDao())
+
+    val homeViewModel: HomeScreenViewModel = viewModel() // This will need a factory if it has dependencies
 
     NavHost(navController = navController, startDestination = Destinations.Home) {
         composable<Destinations.Home> {
@@ -52,9 +58,8 @@ fun IncogniTalkNavHost() {
         }
         composable<Destinations.Chat> {
             val args = it.toRoute<Destinations.Chat>()
-            val context = LocalContext.current
             val chatViewModel: ChatViewModel = viewModel(
-                factory = ChatViewModelFactory(context.applicationContext as Application)
+                factory = ChatViewModelFactory(context.applicationContext as Application, chatRepository, args.chatName)
             )
             ChatScreen(
                 chatName = args.chatName,

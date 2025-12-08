@@ -18,12 +18,7 @@ class HomeScreenViewModel : ViewModel() {
     val searchQuery: StateFlow<String> = _searchQuery
 
     // A dummy list of previous chats.
-    private val _previousChats = MutableStateFlow(
-        listOf(
-            Chat("1", "Alice", "Hey!"),
-            Chat("2", "Bob", "See you tomorrow.")
-        )
-    )
+    private val _previousChats = MutableStateFlow<List<Chat>>(emptyList())
 
     // A dummy function to simulate searching for new people.
     private fun findNewPeople(query: String): List<Chat> {
