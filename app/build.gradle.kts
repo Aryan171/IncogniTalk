@@ -45,6 +45,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.signal.protocol.android)
+
     implementation(libs.kotlinx.serialization.json.v173)
 
     implementation(libs.androidx.room.runtime)

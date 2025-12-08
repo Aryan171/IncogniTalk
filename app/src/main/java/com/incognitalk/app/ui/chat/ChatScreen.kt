@@ -40,10 +40,10 @@ import com.incognitalk.app.ui.model.MessageItem
 fun ChatScreen(
     chatName: String,
     onBackClick: () -> Unit,
-    chatScreenViewModel: ChatScreenViewModel
+    chatViewModel: ChatViewModel
 ) {
-    val messages by chatScreenViewModel.messages.collectAsState()
-    val newMessageText by chatScreenViewModel.newMessageText.collectAsState()
+    val messages by chatViewModel.messages.collectAsState()
+    val newMessageText by chatViewModel.newMessageText.collectAsState()
 
     Scaffold(
         topBar = {
@@ -74,7 +74,7 @@ fun ChatScreen(
             }
             TextField(
                 value = newMessageText,
-                onValueChange = chatScreenViewModel::onNewMessageChange,
+                onValueChange = chatViewModel::onNewMessageChange,
                 placeholder = { Text("Type a message") },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -88,7 +88,7 @@ fun ChatScreen(
                 trailingIcon = {
                     if(newMessageText.isNotBlank()) {
                         IconButton(
-                            onClick = chatScreenViewModel::sendMessage
+                            onClick = chatViewModel::sendMessage
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Send,
