@@ -1,24 +1,50 @@
 package com.incognitalk.app.data.repository
 
 import android.content.Context
+import android.util.Base64
 import com.incognitalk.app.data.database.IncogniTalkDatabase
 import com.incognitalk.app.data.model.keystore.IdentityKey
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.android.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import org.whispersystems.libsignal.InvalidMessageException
 import org.whispersystems.libsignal.SessionBuilder
 import org.whispersystems.libsignal.SessionCipher
 import org.whispersystems.libsignal.SignalProtocolAddress
+import org.whispersystems.libsignal.ecc.Curve
 import org.whispersystems.libsignal.protocol.PreKeySignalMessage
 import org.whispersystems.libsignal.protocol.SignalMessage
 import org.whispersystems.libsignal.state.PreKeyBundle
 import org.whispersystems.libsignal.util.KeyHelper
 import kotlin.text.Charsets
 
+@Serializable
+data class PreKeyBundleDto(
+    val registrationId: Int,
+    val deviceId: Int,
+    val preKeyId: Int,
+    val preKeyPublic: String, // Base64 encoded
+    val signedPreKeyId: Int,
+    val signedPreKeyPublic: String, // Base64 encoded
+    val signedPreKeySignature: String, // Base64 encoded
+    val identityKey: String // Base64 encoded
+)
 
 class SignalRepository(private val context: Context) {
     private val database = IncogniTalkDatabase.getDatabase(context)
     private val store = RoomSignalProtocolStore(database)
+
+    private val client = HttpClient(Android) {
+        install(ContentNegotiation) {
+            json()
+        }
+    }
 
     suspend fun initializeKeys() {
         withContext(Dispatchers.IO) {
@@ -74,12 +100,25 @@ class SignalRepository(private val context: Context) {
 
         String(decryptedMessage, Charsets.UTF_8)
     }
-    /*
-    * TODO
-    * This function must be completed for the app to run properly
-    * */
-    private fun getPreKeyBundleFromServer(recipientId: String, deviceId: Int): PreKeyBundle {
-        val identityKey = KeyHelper.generateIdentityKeyPair()
-        return PreKeyBundle(0, deviceId, 0, identityKey.publicKey.publicKey, 0, identityKey.publicKey.publicKey, ByteArray(0), identityKey.publicKey)
+
+    private suspend fun getPreKeyBundleFromServer(recipientId: String, deviceId: Int): PreKeyBundle {
+        // 10.0.2.2 is the special address for Android Emulator to connect to the host machine's localhost
+        val dto = client.get("http://10.0.2.2:8080/keys/$recipientId/$deviceId").body<PreKeyBundleDto>()
+
+        val preKeyPublic = Base64.decode(dto.preKeyPublic, Base64.DEFAULT)
+        val signedPreKeyPublic = Base64.decode(dto.signedPreKeyPublic, Base64.DEFAULT)
+        val signedPreKeySignature = Base64.decode(dto.signedPreKeySignature, Base64.DEFAULT)
+        val identityKey = Base64.decode(dto.identityKey, Base64.DEFAULT)
+
+        return PreKeyBundle(
+            dto.registrationId,
+            dto.deviceId,
+            dto.preKeyId,
+            Curve.decodePoint(preKeyPublic, 0),
+            dto.signedPreKeyId,
+            Curve.decodePoint(signedPreKeyPublic, 0),
+            signedPreKeySignature,
+            org.whispersystems.libsignal.IdentityKey(identityKey, 0)
+        )
     }
 }
