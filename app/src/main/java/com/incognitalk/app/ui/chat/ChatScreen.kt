@@ -27,6 +27,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -34,6 +35,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.incognitalk.app.ui.model.MessageItem
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,7 +91,7 @@ fun ChatScreen(
                 trailingIcon = {
                     if(newMessageText.isNotBlank()) {
                         IconButton(
-                            onClick = chatViewModel::sendMessage
+                            onClick = { chatViewModel.sendMessage(recipientId = chatName) }
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Send,
@@ -131,25 +134,13 @@ fun MessageBox(
                     else MaterialTheme.colorScheme.tertiaryContainer,
                     shape = messageBoxShape
                 )
-                .padding(top = 6.dp, start = 12.dp, end = 12.dp, bottom = 12.dp)
+                .padding(12.dp)
         ) {
-            Column {
-                Text(
-                    fontSize = 10.sp,
-                    modifier = Modifier.align(if (message.isFromMe) Alignment.End
-                    else Alignment.Start),
-                    text = message.formattedTimestamp,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = (if (message.isFromMe) MaterialTheme.colorScheme.onPrimaryContainer
-                    else MaterialTheme.colorScheme.onSecondaryContainer).copy(alpha = 0.6f)
-                )
-
-                Text(
-                    text = message.content,
-                    color = if (message.isFromMe) MaterialTheme.colorScheme.onPrimaryContainer
-                    else MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
+            Text(
+                text = message.content,
+                color = if (message.isFromMe) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSecondaryContainer
+            )
         }
     }
 }

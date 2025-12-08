@@ -7,46 +7,21 @@ import com.incognitalk.app.data.repository.SignalRepository
 import com.incognitalk.app.ui.model.MessageItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
-    // A dummy list of messages for now.
-    private val _messages = MutableStateFlow(listOf(
-        MessageItem("Hey!", "10:00 AM", isFromMe = true),
-        MessageItem("Hi there!", "10:01 AM", isFromMe = false),
-        MessageItem("How are you?", "10:01 AM", isFromMe = true),
-    ))
-    val messages: StateFlow<List<MessageItem>> = _messages
+    private val signalRepository = SignalRepository(application)
+
+    private val _messages = MutableStateFlow<List<MessageItem>>(emptyList())
+    val messages: StateFlow<List<MessageItem>> = _messages.asStateFlow()
 
     private val _newMessageText = MutableStateFlow("")
-    val newMessageText: StateFlow<String> = _newMessageText
-
-    fun onNewMessageChange(text: String) {
-        _newMessageText.value = text
-    }
-
-    fun sendMessage() {
-        if (_newMessageText.value.isNotBlank()) {
-            val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
-            val currentTime = sdf.format(Date())
-
-            val newMessage = MessageItem(
-                content = _newMessageText.value,
-                formattedTimestamp = currentTime,
-                isFromMe = true
-            )
-            val currentMessages = _messages.value.toMutableList()
-            currentMessages.add(newMessage)
-            _messages.value = currentMessages
-            _newMessageText.value = ""
-        }
-    }
-
-    private val signalRepository = SignalRepository(application)
+    val newMessageText: StateFlow<String> = _newMessageText.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -54,17 +29,38 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun sendMessage(recipientId: String, message: String) {
+    fun onNewMessageChange(text: String) {
+        _newMessageText.value = text
+    }
+
+    fun sendMessage(recipientId: String) {
+        val textToSend = _newMessageText.value
+        if (textToSend.isBlank()) return
+
         viewModelScope.launch {
-            val encryptedMessage = signalRepository.encrypt(message, recipientId, 1) // Using a fixed device ID for now
-            // TODO: Send the encrypted message to the server
+            val encryptedMessage = signalRepository.encrypt(textToSend, recipientId, 1) // Using a fixed device ID for now
+
+            val sentMessage = MessageItem(
+                content = textToSend,
+                isFromMe = true
+            )
+            _messages.update { it + sentMessage }
+            _newMessageText.value = ""
+
+            // Simulate receiving the message back from the server
+            receiveMessage(recipientId, encryptedMessage)
         }
     }
 
-    fun receiveMessage(senderId: String, encryptedMessage: ByteArray) {
+    private fun receiveMessage(senderId: String, encryptedMessage: ByteArray) {
         viewModelScope.launch {
             val decryptedMessage = signalRepository.decrypt(encryptedMessage, senderId, 1) // Using a fixed device ID for now
-            // TODO: Display the decrypted message in the UI
+
+            val receivedMessage = MessageItem(
+                content = "(Decrypted) $decryptedMessage",
+                isFromMe = false
+            )
+            _messages.update { it + receivedMessage }
         }
     }
 }
