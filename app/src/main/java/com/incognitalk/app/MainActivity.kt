@@ -4,12 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.incognitalk.app.ui.chat.ChatScreen
+import com.incognitalk.app.ui.chat.ChatScreenViewModel
 import com.incognitalk.app.ui.home.HomeScreen
+import com.incognitalk.app.ui.home.HomeScreenViewModel
 import com.incognitalk.app.ui.information.InformationScreen
 import com.incognitalk.app.ui.navigation.Destinations
 import com.incognitalk.app.ui.theme.IncogniTalkTheme
@@ -29,11 +32,14 @@ class MainActivity : ComponentActivity() {
 fun IncogniTalkNavHost() {
     val navController = rememberNavController()
 
+    val homeViewModel: HomeScreenViewModel = viewModel()
+
     NavHost(navController = navController, startDestination = Destinations.Home) {
         composable<Destinations.Home> {
             HomeScreen(
                 onInfoClick = { navController.navigate(Destinations.Info) },
-                onChatClick = { chatName -> navController.navigate(Destinations.Chat(chatName)) }
+                onChatClick = { chatName -> navController.navigate(Destinations.Chat(chatName)) },
+                homeScreenViewModel = homeViewModel
             )
         }
         composable<Destinations.Info> {
@@ -43,9 +49,11 @@ fun IncogniTalkNavHost() {
         }
         composable<Destinations.Chat> {
             val args = it.toRoute<Destinations.Chat>()
+            val chatViewModel: ChatScreenViewModel = viewModel()
             ChatScreen(
                 chatName = args.chatName,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                chatScreenViewModel = chatViewModel
             )
         }
     }

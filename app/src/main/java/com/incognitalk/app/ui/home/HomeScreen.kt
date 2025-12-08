@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
@@ -24,18 +23,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 
-@Preview
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onInfoClick: () -> Unit = {},
-    onChatClick: (String) -> Unit = {},
-    homeScreenViewModel: HomeScreenViewModel = viewModel()
+    onInfoClick: () -> Unit,
+    onChatClick: (String) -> Unit,
+    homeScreenViewModel: HomeScreenViewModel
 ) {
     val searchQuery by homeScreenViewModel.searchQuery.collectAsState()
     val searchResults by homeScreenViewModel.searchResults.collectAsState()
@@ -89,8 +86,10 @@ fun HomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .padding(8.dp)
+                                .clip(RoundedCornerShape(8.dp))
                                 .clickable { onChatClick(chat.name) }
-                                .padding(16.dp)
+                                .padding(8.dp)
                         ) {
                             if (chat.isNewUser) {
                                 Text("Start a new chat", style = MaterialTheme.typography.bodySmall)

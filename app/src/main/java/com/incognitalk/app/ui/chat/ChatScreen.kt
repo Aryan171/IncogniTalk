@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,18 +31,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.unit.sp
 import com.incognitalk.app.ui.model.MessageItem
 
-@Preview
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    chatName: String = "defaultChat",
-    onBackClick: () -> Unit = {},
-    chatScreenViewModel: ChatScreenViewModel = viewModel()
+    chatName: String,
+    onBackClick: () -> Unit,
+    chatScreenViewModel: ChatScreenViewModel
 ) {
     val messages by chatScreenViewModel.messages.collectAsState()
     val newMessageText by chatScreenViewModel.newMessageText.collectAsState()
@@ -89,7 +86,7 @@ fun ChatScreen(
                     disabledIndicatorColor = Color.Transparent
                 ),
                 trailingIcon = {
-                    if(newMessageText.isNotEmpty()) {
+                    if(newMessageText.isNotBlank()) {
                         IconButton(
                             onClick = chatScreenViewModel::sendMessage
                         ) {
@@ -134,13 +131,25 @@ fun MessageBox(
                     else MaterialTheme.colorScheme.tertiaryContainer,
                     shape = messageBoxShape
                 )
-                .padding(12.dp)
+                .padding(top = 6.dp, start = 12.dp, end = 12.dp, bottom = 12.dp)
         ) {
-            Text(
-                text = message.content,
-                color = if (message.isFromMe) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.onSecondaryContainer
-            )
+            Column {
+                Text(
+                    fontSize = 10.sp,
+                    modifier = Modifier.align(if (message.isFromMe) Alignment.End
+                    else Alignment.Start),
+                    text = message.formattedTimestamp,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = (if (message.isFromMe) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSecondaryContainer).copy(alpha = 0.6f)
+                )
+
+                Text(
+                    text = message.content,
+                    color = if (message.isFromMe) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
         }
     }
 }
