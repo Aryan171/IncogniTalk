@@ -18,6 +18,7 @@ import com.incognitalk.app.ui.chat.ChatViewModel
 import com.incognitalk.app.ui.chat.ChatViewModelFactory
 import com.incognitalk.app.ui.home.HomeScreen
 import com.incognitalk.app.ui.home.HomeScreenViewModel
+import com.incognitalk.app.ui.home.HomeScreenViewModelFactory
 import com.incognitalk.app.ui.information.InformationScreen
 import com.incognitalk.app.ui.navigation.Destinations
 import com.incognitalk.app.ui.theme.IncogniTalkTheme
@@ -41,7 +42,9 @@ fun IncogniTalkNavHost() {
     val db = IncogniTalkDatabase.getDatabase(context)
     val chatRepository = ChatRepository(db.chatDao(), db.messageDao())
 
-    val homeViewModel: HomeScreenViewModel = viewModel() // This will need a factory if it has dependencies
+    val homeViewModel: HomeScreenViewModel = viewModel(
+        factory = HomeScreenViewModelFactory(chatRepository)
+    )
 
     NavHost(navController = navController, startDestination = Destinations.Home) {
         composable<Destinations.Home> {
