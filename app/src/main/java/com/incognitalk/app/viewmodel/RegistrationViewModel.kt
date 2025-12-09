@@ -32,17 +32,18 @@ class RegistrationViewModel(application: Application) : AndroidViewModel(applica
     fun register(username: String) {
         viewModelScope.launch {
             _uiState.value = RegistrationUiState.Loading
-
-            val isUsernameAvailable = authRepository.checkUsernameAvailability(username)
-
-            if (isUsernameAvailable) {
-                signalRepository.initializeKeys()
-                val registrationBundle = signalRepository.getRegistrationBundle()
-                authRepository.register(username, registrationBundle)
-                userRepository.saveUser(User(username))
-                _uiState.value = RegistrationUiState.Success
-            } else {
-                _uiState.value = RegistrationUiState.Error("Username is not available")
+            try {
+                if (authRepository.checkUsernameAvailability(username)) {
+                    signalRepository.initializeKeys()
+                    val registrationBundle = signalRepository.getRegistrationBundle()
+                    authRepository.register(username, registrationBundle)
+                    userRepository.saveUser(User(username))
+                    _uiState.value = RegistrationUiState.Success
+                } else {
+                    _uiState.value = RegistrationUiState.Error("Username is not available")
+                }
+            } catch (e: Exception) {
+                _uiState.value = RegistrationUiState.Error("Could not connect to the server")
             }
         }
     }

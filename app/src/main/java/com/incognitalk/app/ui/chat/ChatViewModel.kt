@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.incognitalk.app.data.database.IncogniTalkDatabase
 import com.incognitalk.app.data.model.Message
+import com.incognitalk.app.data.network.ApiServiceImpl
+import com.incognitalk.app.data.network.KtorClient
+import com.incognitalk.app.data.repository.AuthRepository
 import com.incognitalk.app.data.repository.ChatRepository
 import com.incognitalk.app.data.repository.ChatSocketRepository
 import com.incognitalk.app.data.repository.SignalRepository
@@ -28,6 +31,7 @@ class ChatViewModel(
 ) : AndroidViewModel(application) {
 
     private val signalRepository = SignalRepository(application)
+    private val authRepository = AuthRepository(ApiServiceImpl(KtorClient.client))
     private val userRepository: UserRepository
 
     private val _messages = MutableStateFlow<List<MessageItem>>(emptyList())
@@ -62,8 +66,10 @@ class ChatViewModel(
 
         ChatSocketRepository.incomingMessages
             .onEach { webSocketMessage ->
-                // Only process messages intended for the current user and for the current chat
-                if (webSocketMessage.receiverId == senderId && webSocketMessage.senderId == chatName) {
+                if (webSocketMessage.message == "KEYS_DEPLETED") {
+                    val newKeys = signalRepository.replenishKeys()
+                    authRepository.replenishKeys(senderId, newKeys)
+                } else if (webSocketMessage.receiverId == senderId && webSocketMessage.senderId == chatName) {
                     val encryptedMessage = Base64.getDecoder().decode(webSocketMessage.message)
                     receiveMessage(webSocketMessage.senderId, encryptedMessage)
                 }

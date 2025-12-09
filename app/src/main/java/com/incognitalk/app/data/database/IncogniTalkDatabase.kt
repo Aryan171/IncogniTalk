@@ -12,9 +12,9 @@ import com.incognitalk.app.data.model.keystore.*
 
 @Database(
     entities = [
-        Chat::class, Message::class, IdentityKey::class, PreKey::class, SignedPreKey::class, Session::class, RemoteIdentity::class, User::class
+        Chat::class, Message::class, IdentityKey::class, PreKey::class, SignedPreKey::class, Session::class, RemoteIdentity::class, User::class, KeyGenerationState::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class IncogniTalkDatabase : RoomDatabase() {
@@ -27,6 +27,7 @@ abstract class IncogniTalkDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
     abstract fun remoteIdentityDao(): RemoteIdentityDao
     abstract fun userDao(): UserDao
+    abstract fun keyGenerationStateDao(): KeyGenerationStateDao
 
     companion object {
         @Volatile

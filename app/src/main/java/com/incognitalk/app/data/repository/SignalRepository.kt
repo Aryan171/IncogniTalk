@@ -7,6 +7,7 @@ import com.incognitalk.app.data.model.PreKeySummary
 import com.incognitalk.app.data.model.RegistrationBundle
 import com.incognitalk.app.data.model.SignedPreKeySummary
 import com.incognitalk.app.data.model.keystore.IdentityKey
+import com.incognitalk.app.data.model.keystore.KeyGenerationState
 import com.incognitalk.app.data.network.ApiServiceImpl
 import com.incognitalk.app.data.network.KtorClient
 import kotlinx.coroutines.Dispatchers
@@ -28,12 +29,14 @@ class SignalRepository(private val context: Context) {
     private val store = RoomSignalProtocolStore(database)
     private val apiService = ApiServiceImpl(KtorClient.client)
     private val preKeyBundleRepository = PreKeyBundleRepository(apiService)
+    private val keyGenerationStateDao = database.keyGenerationStateDao()
 
     suspend fun initializeKeys() {
         withContext(Dispatchers.IO) {
             if (database.identityKeyDao().getIdentityKey() == null) {
                 val registrationId = KeyHelper.generateRegistrationId(false)
                 val identityKeyPair = KeyHelper.generateIdentityKeyPair()
+
                 val preKeys = KeyHelper.generatePreKeys(0, 100)
                 val signedPreKeys = (0..99).map { KeyHelper.generateSignedPreKey(identityKeyPair, it) }
 
@@ -51,8 +54,37 @@ class SignalRepository(private val context: Context) {
                 signedPreKeys.forEach { signedPreKey ->
                     store.storeSignedPreKey(signedPreKey.id, signedPreKey)
                 }
+
+                keyGenerationStateDao.insertOrUpdate(KeyGenerationState(lastPreKeyId = 100, lastSignedPreKeyId = 100))
             }
         }
+    }
+
+    suspend fun replenishKeys(): RegistrationBundle = withContext(Dispatchers.IO) {
+        val identityKeyRecord = database.identityKeyDao().getIdentityKey()!!
+        val identityKeyPair = IdentityKeyPair(identityKeyRecord.keyPair)
+
+        val keyGenerationState = keyGenerationStateDao.getKeyGenerationState() ?: KeyGenerationState(lastPreKeyId = 0, lastSignedPreKeyId = 0)
+
+        val newPreKeys = KeyHelper.generatePreKeys(keyGenerationState.lastPreKeyId, 100)
+        val newSignedPreKeys = (keyGenerationState.lastSignedPreKeyId until keyGenerationState.lastSignedPreKeyId + 100).map { KeyHelper.generateSignedPreKey(identityKeyPair, it) }
+
+        newPreKeys.forEach { store.storePreKey(it.id, it) }
+        newSignedPreKeys.forEach { store.storeSignedPreKey(it.id, it) }
+
+        keyGenerationStateDao.insertOrUpdate(
+            KeyGenerationState(
+                lastPreKeyId = keyGenerationState.lastPreKeyId + 100,
+                lastSignedPreKeyId = keyGenerationState.lastSignedPreKeyId + 100
+            )
+        )
+
+        RegistrationBundle(
+            identityKey = Base64.encodeToString(identityKeyPair.publicKey.serialize(), Base64.NO_WRAP),
+            registrationId = identityKeyRecord.registrationId,
+            preKeys = newPreKeys.map { it.toSummary() },
+            signedPreKeys = newSignedPreKeys.map { it.toSummary() }
+        )
     }
 
     suspend fun getRegistrationBundle(): RegistrationBundle = withContext(Dispatchers.IO) {
