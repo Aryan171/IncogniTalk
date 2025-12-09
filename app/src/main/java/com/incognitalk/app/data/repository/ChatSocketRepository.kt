@@ -26,7 +26,8 @@ import java.util.Base64
 object ChatSocketRepository {
     private const val WS_HOST = "10.0.2.2"
     private const val WS_PORT = 8080
-    private const val MSG_KEYS_DEPLETED = "KEYS_DEPLETED"
+    private const val MSG_PRE_KEYS_DEPLETED = "PRE-KEYS_DEPLETED"
+    private const val MSG_ROTATE_SIGNED_KEY = "ROTATE-SIGNED-PRE-KEY"
     private const val RECONNECT_DELAY_MS = 5000L
 
     private val client = KtorClient.client.config {
@@ -102,10 +103,16 @@ object ChatSocketRepository {
                 if (frame is Frame.Text) {
                     try {
                         val text = frame.readText()
-                        if (text == MSG_KEYS_DEPLETED) {
-                            handleKeysDepleted()
-                        } else {
-                            handleIncomingMessage(text)
+                        when (text) {
+                            MSG_PRE_KEYS_DEPLETED -> {
+                                handlePreKeysDepleted()
+                            }
+                            MSG_ROTATE_SIGNED_KEY -> {
+                                handleRotateSignedKey()
+                            }
+                            else -> {
+                                handleIncomingMessage(text)
+                            }
                         }
                     } catch (e: Exception) {
                         // Error processing a single message, but don't kill the connection
@@ -118,9 +125,14 @@ object ChatSocketRepository {
         }
     }
 
-    private suspend fun handleKeysDepleted() {
-        val newKeys = signalRepository.replenishKeys()
-        currentUserId?.let { authRepository.replenishKeys(it, newKeys) }
+    private suspend fun handlePreKeysDepleted() {
+        val newKeys = signalRepository.replenishPreKeys()
+        currentUserId?.let { authRepository.replenishPreKeys(it, newKeys) }
+    }
+
+    private suspend fun handleRotateSignedKey() {
+        val newSignedKey = signalRepository.rotateSignedPreKey()
+        currentUserId?.let { authRepository.rotateSignedPreKey(it, newSignedKey) }
     }
 
     private suspend fun handleIncomingMessage(text: String) {

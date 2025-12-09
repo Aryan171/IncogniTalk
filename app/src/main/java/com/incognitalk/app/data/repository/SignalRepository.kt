@@ -38,7 +38,8 @@ class SignalRepository(private val context: Context) {
                 val identityKeyPair = KeyHelper.generateIdentityKeyPair()
 
                 val preKeys = KeyHelper.generatePreKeys(0, 100)
-                val signedPreKeys = (0..99).map { KeyHelper.generateSignedPreKey(identityKeyPair, it) }
+                // Generate only one signed pre-key with ID 1
+                val signedPreKey = KeyHelper.generateSignedPreKey(identityKeyPair, 1)
 
                 database.identityKeyDao().insert(
                     IdentityKey(
@@ -50,54 +51,58 @@ class SignalRepository(private val context: Context) {
                 preKeys.forEach { preKey ->
                     store.storePreKey(preKey.id, preKey)
                 }
+                store.storeSignedPreKey(signedPreKey.id, signedPreKey)
 
-                signedPreKeys.forEach { signedPreKey ->
-                    store.storeSignedPreKey(signedPreKey.id, signedPreKey)
-                }
-
-                keyGenerationStateDao.insertOrUpdate(KeyGenerationState(lastPreKeyId = 100, lastSignedPreKeyId = 100))
+                keyGenerationStateDao.insertOrUpdate(KeyGenerationState(lastPreKeyId = 100, lastSignedPreKeyId = 1))
             }
         }
     }
 
-    suspend fun replenishKeys(): RegistrationBundle = withContext(Dispatchers.IO) {
-        val identityKeyRecord = database.identityKeyDao().getIdentityKey()!!
-        val identityKeyPair = IdentityKeyPair(identityKeyRecord.keyPair)
-
-        val keyGenerationState = keyGenerationStateDao.getKeyGenerationState() ?: KeyGenerationState(lastPreKeyId = 0, lastSignedPreKeyId = 0)
-
+    suspend fun replenishPreKeys(): List<PreKeySummary> = withContext(Dispatchers.IO) {
+        val keyGenerationState = keyGenerationStateDao.getKeyGenerationState()!!
         val newPreKeys = KeyHelper.generatePreKeys(keyGenerationState.lastPreKeyId, 100)
-        val newSignedPreKeys = (keyGenerationState.lastSignedPreKeyId until keyGenerationState.lastSignedPreKeyId + 100).map { KeyHelper.generateSignedPreKey(identityKeyPair, it) }
 
         newPreKeys.forEach { store.storePreKey(it.id, it) }
-        newSignedPreKeys.forEach { store.storeSignedPreKey(it.id, it) }
 
         keyGenerationStateDao.insertOrUpdate(
-            KeyGenerationState(
-                lastPreKeyId = keyGenerationState.lastPreKeyId + 100,
-                lastSignedPreKeyId = keyGenerationState.lastSignedPreKeyId + 100
-            )
+            keyGenerationState.copy(lastPreKeyId = keyGenerationState.lastPreKeyId + 100)
         )
 
-        RegistrationBundle(
-            identityKey = Base64.encodeToString(identityKeyPair.publicKey.serialize(), Base64.NO_WRAP),
-            registrationId = identityKeyRecord.registrationId,
-            preKeys = newPreKeys.map { it.toSummary() },
-            signedPreKeys = newSignedPreKeys.map { it.toSummary() }
-        )
+        newPreKeys.map { it.toSummary() }
     }
+
+    suspend fun rotateSignedPreKey(): SignedPreKeySummary = withContext(Dispatchers.IO) {
+        val identityKeyPair = IdentityKeyPair(store.identityKeyPair.serialize())
+        val keyGenerationState = keyGenerationStateDao.getKeyGenerationState()!!
+
+        val newSignedPreKeyId = keyGenerationState.lastSignedPreKeyId + 1
+        val newSignedPreKey = KeyHelper.generateSignedPreKey(identityKeyPair, newSignedPreKeyId)
+
+        store.storeSignedPreKey(newSignedPreKey.id, newSignedPreKey)
+
+        // Remove the old one
+        store.removeSignedPreKey(keyGenerationState.lastSignedPreKeyId)
+
+        keyGenerationStateDao.insertOrUpdate(
+            keyGenerationState.copy(lastSignedPreKeyId = newSignedPreKeyId)
+        )
+
+        newSignedPreKey.toSummary()
+    }
+
 
     suspend fun getRegistrationBundle(): RegistrationBundle = withContext(Dispatchers.IO) {
         val identityKeyRecord = database.identityKeyDao().getIdentityKey()!!
         val identityKeyPair = IdentityKeyPair(identityKeyRecord.keyPair)
         val preKeys = (0..99).map { store.loadPreKey(it) }
-        val signedPreKeys = (0..99).map { store.loadSignedPreKey(it) }
+        // There is only one signed pre key now
+        val signedPreKey = store.loadSignedPreKey(1)
 
         RegistrationBundle(
             identityKey = Base64.encodeToString(identityKeyPair.publicKey.serialize(), Base64.NO_WRAP),
             registrationId = identityKeyRecord.registrationId,
             preKeys = preKeys.map { it.toSummary() },
-            signedPreKeys = signedPreKeys.map { it.toSummary() }
+            signedPreKey = signedPreKey.toSummary()
         )
     }
 

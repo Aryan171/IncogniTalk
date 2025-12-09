@@ -2,7 +2,8 @@ package com.incognitalk.app.data.network
 
 import com.incognitalk.app.data.model.PreKeyBundleDto
 import com.incognitalk.app.data.model.RegisterRequest
-import com.incognitalk.app.data.model.ReplenishKeysRequest
+import com.incognitalk.app.data.model.ReplenishPreKeysRequest
+import com.incognitalk.app.data.model.RotateSignedPreKeyRequest
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.android.*
@@ -19,7 +20,9 @@ interface ApiService {
 
     suspend fun registerUser(request: RegisterRequest)
 
-    suspend fun replenishKeys(request: ReplenishKeysRequest)
+    suspend fun replenishPreKeys(request: ReplenishPreKeysRequest)
+
+    suspend fun rotateSignedPreKey(request: RotateSignedPreKeyRequest)
 }
 
 class ApiServiceImpl(private val client: HttpClient) : ApiService {
@@ -41,8 +44,15 @@ class ApiServiceImpl(private val client: HttpClient) : ApiService {
         }
     }
 
-    override suspend fun replenishKeys(request: ReplenishKeysRequest) {
-        client.post("$domain/keys/replenish") {
+    override suspend fun replenishPreKeys(request: ReplenishPreKeysRequest) {
+        client.post("$domain/pre-key/replenish") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+    }
+
+    override suspend fun rotateSignedPreKey(request: RotateSignedPreKeyRequest) {
+        client.post("$domain/signed-pre-key/rotate") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }

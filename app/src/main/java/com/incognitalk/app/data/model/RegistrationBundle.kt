@@ -7,7 +7,7 @@ data class RegistrationBundle(
     val identityKey: String,
     val registrationId: Int,
     val preKeys: List<PreKeySummary>,
-    val signedPreKeys: List<SignedPreKeySummary>
+    val signedPreKey: SignedPreKeySummary
 )
 
 @Serializable

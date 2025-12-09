@@ -3,8 +3,7 @@ package com.incognitalk.app.data.model
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ReplenishKeysRequest(
+data class ReplenishPreKeysRequest(
     val userId: String,
-    val preKeys: List<PreKeySummary>,
-    val signedPreKeys: List<SignedPreKeySummary>
+    val preKeys: List<PreKeySummary>
 )
