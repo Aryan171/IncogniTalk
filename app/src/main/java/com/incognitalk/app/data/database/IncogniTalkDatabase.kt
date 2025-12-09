@@ -7,13 +7,14 @@ import androidx.room.RoomDatabase
 import com.incognitalk.app.data.dao.*
 import com.incognitalk.app.data.model.Chat
 import com.incognitalk.app.data.model.Message
+import com.incognitalk.app.data.model.User
 import com.incognitalk.app.data.model.keystore.*
 
 @Database(
     entities = [
-        Chat::class, Message::class, IdentityKey::class, PreKey::class, SignedPreKey::class, Session::class, RemoteIdentity::class
+        Chat::class, Message::class, IdentityKey::class, PreKey::class, SignedPreKey::class, Session::class, RemoteIdentity::class, User::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class IncogniTalkDatabase : RoomDatabase() {
@@ -25,6 +26,7 @@ abstract class IncogniTalkDatabase : RoomDatabase() {
     abstract fun signedPreKeyDao(): SignedPreKeyDao
     abstract fun sessionDao(): SessionDao
     abstract fun remoteIdentityDao(): RemoteIdentityDao
+    abstract fun userDao(): UserDao
 
     companion object {
         @Volatile

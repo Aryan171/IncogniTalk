@@ -2,6 +2,8 @@ package com.incognitalk.app.ui.navigation
 
 import android.app.Application
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -18,16 +20,22 @@ import com.incognitalk.app.ui.home.HomeScreenViewModel
 import com.incognitalk.app.ui.home.HomeScreenViewModelFactory
 import com.incognitalk.app.ui.information.InformationScreen
 import com.incognitalk.app.ui.screens.RegistrationScreen
+import com.incognitalk.app.viewmodel.MainViewModel
+import com.incognitalk.app.viewmodel.MainViewModelFactory
 
 @Composable
 fun NavGraph() {
-    val navController = rememberNavController()
     val context = LocalContext.current
+    val mainViewModel: MainViewModel = viewModel(factory = MainViewModelFactory(context.applicationContext as Application))
+    val user by mainViewModel.user.collectAsState()
 
+    val navController = rememberNavController()
     val db = IncogniTalkDatabase.getDatabase(context)
     val chatRepository = ChatRepository(db.chatDao(), db.messageDao())
 
-    NavHost(navController = navController, startDestination = Destinations.Registration) {
+    val startDestination = if (user == null) Destinations.Registration else Destinations.Home
+
+    NavHost(navController = navController, startDestination = startDestination) {
         composable<Destinations.Registration> {
             RegistrationScreen(
                 onRegistrationSuccess = {

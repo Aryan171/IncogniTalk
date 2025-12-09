@@ -3,18 +3,22 @@ package com.incognitalk.app.ui.chat
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.incognitalk.app.data.database.IncogniTalkDatabase
 import com.incognitalk.app.data.model.Message
 import com.incognitalk.app.data.repository.ChatRepository
 import com.incognitalk.app.data.repository.ChatSocketRepository
 import com.incognitalk.app.data.repository.SignalRepository
+import com.incognitalk.app.data.repository.UserRepository
 import com.incognitalk.app.ui.model.MessageItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.Base64
 
 class ChatViewModel(
@@ -24,6 +28,7 @@ class ChatViewModel(
 ) : AndroidViewModel(application) {
 
     private val signalRepository = SignalRepository(application)
+    private val userRepository: UserRepository
 
     private val _messages = MutableStateFlow<List<MessageItem>>(emptyList())
     val messages: StateFlow<List<MessageItem>> = _messages.asStateFlow()
@@ -34,13 +39,13 @@ class ChatViewModel(
     val isConnecting: StateFlow<Boolean> = ChatSocketRepository.isConnecting
     val connectionError: StateFlow<Boolean> = ChatSocketRepository.connectionError
 
-    // TODO: Replace with actual user ID
-    private val senderId = "my_user_id"
+    private val senderId: String
 
     init {
-        viewModelScope.launch {
-            signalRepository.initializeKeys()
-        }
+        val userDao = IncogniTalkDatabase.getDatabase(application).userDao()
+        userRepository = UserRepository(userDao)
+        senderId = runBlocking { userRepository.getUser().first()?.username ?: "" }
+
         ChatSocketRepository.start()
 
         chatRepository.getChatWithMessages(chatName)
