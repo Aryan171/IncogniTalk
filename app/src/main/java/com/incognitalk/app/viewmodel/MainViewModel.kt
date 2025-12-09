@@ -10,7 +10,13 @@ import com.incognitalk.app.data.model.User
 import com.incognitalk.app.data.repository.UserRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+
+sealed class UserState {
+    object Loading : UserState()
+    data class Loaded(val user: User?) : UserState()
+}
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val userRepository: UserRepository
@@ -20,11 +26,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         userRepository = UserRepository(userDao)
     }
 
-    val user: StateFlow<User?> = userRepository.getUser().stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = null // Initial value is null, UI will show a loading state.
-    )
+    val userState: StateFlow<UserState> = userRepository.getUser()
+        .map { UserState.Loaded(it) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = UserState.Loading
+        )
 }
 
 class MainViewModelFactory(private val application: Application) : ViewModelProvider.Factory {

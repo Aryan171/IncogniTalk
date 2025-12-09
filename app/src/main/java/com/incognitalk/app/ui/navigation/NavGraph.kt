@@ -2,10 +2,15 @@ package com.incognitalk.app.ui.navigation
 
 import android.app.Application
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -25,20 +30,21 @@ import com.incognitalk.app.ui.information.InformationScreen
 import com.incognitalk.app.ui.screens.RegistrationScreen
 import com.incognitalk.app.viewmodel.MainViewModel
 import com.incognitalk.app.viewmodel.MainViewModelFactory
+import com.incognitalk.app.viewmodel.UserState
 
 @Composable
 fun NavGraph() {
     val context = LocalContext.current
     val mainViewModel: MainViewModel = viewModel(factory = MainViewModelFactory(context.applicationContext as Application))
-    val user by mainViewModel.user.collectAsState()
+    val userState by mainViewModel.userState.collectAsState()
 
     val navController = rememberNavController()
     val db = IncogniTalkDatabase.getDatabase(context)
     val chatRepository = ChatRepository(db.chatDao(), db.messageDao())
 
     // Start/Stop WebSocket connection based on user state
-    DisposableEffect(user) {
-        val currentUser = user
+    DisposableEffect(userState) {
+        val currentUser = (userState as? UserState.Loaded)?.user
         if (currentUser != null) {
             ChatSocketRepository.init(context)
             ChatSocketRepository.start()
@@ -51,13 +57,15 @@ fun NavGraph() {
     }
 
     // Show loading screen or main content based on user state
-    Crossfade(targetState = user) { targetUser ->
-        when (targetUser) {
-            null -> {
-                // You could show a full-screen loading spinner here
+    Crossfade(targetState = userState) { state ->
+        when (state) {
+            is UserState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
-            else -> {
-                val startDestination = if (targetUser.username.isNotBlank()) Destinations.Home else Destinations.Registration
+            is UserState.Loaded -> {
+                val startDestination = if (state.user != null) Destinations.Home else Destinations.Registration
                 NavHost(navController = navController, startDestination = startDestination) {
                     composable<Destinations.Registration> {
                         RegistrationScreen(
