@@ -22,7 +22,7 @@ class ChatRepository(private val chatDao: ChatDao, private val messageDao: Messa
     suspend fun insertMessage(message: Message) {
         // Ensure the parent chat exists before inserting the message.
         // Since the DAO uses OnConflictStrategy.IGNORE, this is safe to call every time.
-        chatDao.insertChat(Chat(name = message.chatOwnerName))
+        chatDao.insertChat(Chat(chatName = message.chatOwnerName))
         messageDao.insertMessage(message)
     }
 }
