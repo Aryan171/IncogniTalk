@@ -1,8 +1,8 @@
 package com.incognitalk.app.data.repository
 
 import com.incognitalk.app.data.model.PreKeySummary
-import com.incognitalk.app.data.model.RegistrationBundle
 import com.incognitalk.app.data.model.RegisterRequest
+import com.incognitalk.app.data.model.RegistrationBundle
 import com.incognitalk.app.data.model.ReplenishPreKeysRequest
 import com.incognitalk.app.data.model.RotateSignedPreKeyRequest
 import com.incognitalk.app.data.model.SignedPreKeySummary
@@ -20,18 +20,13 @@ class AuthRepository(private val apiService: ApiService) {
     }
 
     suspend fun replenishPreKeys(userId: String, preKeys: List<PreKeySummary>) {
-        val request = ReplenishPreKeysRequest(
-            userId = userId,
-            preKeys = preKeys
-        )
+        val preKeysMap = preKeys.associate { it.id.toString() to it.publicKey }
+        val request = ReplenishPreKeysRequest(userId, preKeysMap)
         apiService.replenishPreKeys(request)
     }
 
     suspend fun rotateSignedPreKey(userId: String, signedPreKey: SignedPreKeySummary) {
-        val request = RotateSignedPreKeyRequest(
-            userId = userId,
-            signedPreKey = signedPreKey
-        )
+        val request = RotateSignedPreKeyRequest(userId, signedPreKey)
         apiService.rotateSignedPreKey(request)
     }
 }

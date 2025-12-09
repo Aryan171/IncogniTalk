@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ReplenishPreKeysRequest(
     val userId: String,
-    val preKeys: List<PreKeySummary>
+    val preKeys: Map<String, String> // Map of <ID, PublicKey>
 )

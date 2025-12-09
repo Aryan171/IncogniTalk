@@ -101,7 +101,7 @@ class SignalRepository(private val context: Context) {
         RegistrationBundle(
             identityKey = Base64.encodeToString(identityKeyPair.publicKey.serialize(), Base64.NO_WRAP),
             registrationId = identityKeyRecord.registrationId,
-            preKeys = preKeys.map { it.toSummary() },
+            preKeys = preKeys.associate { it.id.toString() to Base64.encodeToString(it.keyPair.publicKey.serialize(), Base64.NO_WRAP) },
             signedPreKey = signedPreKey.toSummary()
         )
     }
