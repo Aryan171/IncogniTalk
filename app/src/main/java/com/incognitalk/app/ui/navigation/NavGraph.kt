@@ -2,6 +2,7 @@ package com.incognitalk.app.ui.navigation
 
 import android.app.Application
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
@@ -12,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.incognitalk.app.data.database.IncogniTalkDatabase
 import com.incognitalk.app.data.repository.ChatRepository
+import com.incognitalk.app.data.repository.ChatSocketRepository
 import com.incognitalk.app.ui.chat.ChatScreen
 import com.incognitalk.app.ui.chat.ChatViewModel
 import com.incognitalk.app.ui.chat.ChatViewModelFactory
@@ -34,6 +36,17 @@ fun NavGraph() {
     val chatRepository = ChatRepository(db.chatDao(), db.messageDao())
 
     val startDestination = if (user == null) Destinations.Registration else Destinations.Home
+
+    if (user != null) {
+        ChatSocketRepository.init(context)
+        ChatSocketRepository.start()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            ChatSocketRepository.stop()
+        }
+    }
 
     NavHost(navController = navController, startDestination = startDestination) {
         composable<Destinations.Registration> {

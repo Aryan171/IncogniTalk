@@ -5,9 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.incognitalk.app.data.database.IncogniTalkDatabase
 import com.incognitalk.app.data.model.Message
-import com.incognitalk.app.data.network.ApiServiceImpl
-import com.incognitalk.app.data.network.KtorClient
-import com.incognitalk.app.data.repository.AuthRepository
 import com.incognitalk.app.data.repository.ChatRepository
 import com.incognitalk.app.data.repository.ChatSocketRepository
 import com.incognitalk.app.data.repository.SignalRepository
@@ -22,7 +19,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.util.Base64
 
 class ChatViewModel(
     application: Application,
@@ -31,7 +27,6 @@ class ChatViewModel(
 ) : AndroidViewModel(application) {
 
     private val signalRepository = SignalRepository(application)
-    private val authRepository = AuthRepository(ApiServiceImpl(KtorClient.client))
     private val userRepository: UserRepository
 
     private val _messages = MutableStateFlow<List<MessageItem>>(emptyList())
@@ -50,8 +45,6 @@ class ChatViewModel(
         userRepository = UserRepository(userDao)
         senderId = runBlocking { userRepository.getUser().first()?.username ?: "" }
 
-        ChatSocketRepository.start()
-
         chatRepository.getChatWithMessages(chatName)
             .map { chatWithMessages ->
                 chatWithMessages.messages.map {
@@ -62,18 +55,6 @@ class ChatViewModel(
                 }
             }
             .onEach { _messages.value = it }
-            .launchIn(viewModelScope)
-
-        ChatSocketRepository.incomingMessages
-            .onEach { webSocketMessage ->
-                if (webSocketMessage.message == "KEYS_DEPLETED") {
-                    val newKeys = signalRepository.replenishKeys()
-                    authRepository.replenishKeys(senderId, newKeys)
-                } else if (webSocketMessage.receiverId == senderId && webSocketMessage.senderId == chatName) {
-                    val encryptedMessage = Base64.getDecoder().decode(webSocketMessage.message)
-                    receiveMessage(webSocketMessage.senderId, encryptedMessage)
-                }
-            }
             .launchIn(viewModelScope)
     }
 
@@ -95,24 +76,10 @@ class ChatViewModel(
                 sender = senderId
             )
             chatRepository.insertMessage(message)
-            
+
             _newMessageText.value = ""
 
             ChatSocketRepository.sendMessage(senderId, chatName, encryptedMessage)
-        }
-    }
-
-    private fun receiveMessage(sender: String, encryptedMessage: ByteArray) {
-        viewModelScope.launch {
-            val decryptedMessage = signalRepository.decrypt(encryptedMessage, sender, 1) // Using a fixed device ID for now
-
-            val message = Message(
-                chatOwnerName = chatName,
-                content = decryptedMessage,
-                timestamp = System.currentTimeMillis(),
-                sender = sender
-            )
-            chatRepository.insertMessage(message)
         }
     }
 }
