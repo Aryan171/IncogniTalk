@@ -3,48 +3,30 @@ package com.incognitalk.app.data.repository
 import android.content.Context
 import android.util.Base64
 import com.incognitalk.app.data.database.IncogniTalkDatabase
+import com.incognitalk.app.data.model.PreKeySummary
+import com.incognitalk.app.data.model.RegistrationBundle
+import com.incognitalk.app.data.model.SignedPreKeySummary
 import com.incognitalk.app.data.model.keystore.IdentityKey
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.android.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.serialization.kotlinx.json.*
+import com.incognitalk.app.data.network.ApiServiceImpl
+import com.incognitalk.app.data.network.KtorClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import org.whispersystems.libsignal.InvalidMessageException
 import org.whispersystems.libsignal.SessionBuilder
 import org.whispersystems.libsignal.SessionCipher
 import org.whispersystems.libsignal.SignalProtocolAddress
-import org.whispersystems.libsignal.ecc.Curve
 import org.whispersystems.libsignal.protocol.PreKeySignalMessage
 import org.whispersystems.libsignal.protocol.SignalMessage
-import org.whispersystems.libsignal.state.PreKeyBundle
+import org.whispersystems.libsignal.state.PreKeyRecord
+import org.whispersystems.libsignal.state.SignedPreKeyRecord
 import org.whispersystems.libsignal.util.KeyHelper
 import kotlin.text.Charsets
-
-@Serializable
-data class PreKeyBundleDto(
-    val registrationId: Int,
-    val deviceId: Int,
-    val preKeyId: Int,
-    val preKeyPublic: String, // Base64 encoded
-    val signedPreKeyId: Int,
-    val signedPreKeyPublic: String, // Base64 encoded
-    val signedPreKeySignature: String, // Base64 encoded
-    val identityKey: String // Base64 encoded
-)
 
 class SignalRepository(private val context: Context) {
     private val database = IncogniTalkDatabase.getDatabase(context)
     private val store = RoomSignalProtocolStore(database)
-
-    private val client = HttpClient(Android) {
-        install(ContentNegotiation) {
-            json()
-        }
-    }
+    private val apiService = ApiServiceImpl(KtorClient.client)
+    private val preKeyBundleRepository = PreKeyBundleRepository(apiService)
 
     suspend fun initializeKeys() {
         withContext(Dispatchers.IO) {
@@ -52,7 +34,7 @@ class SignalRepository(private val context: Context) {
                 val registrationId = KeyHelper.generateRegistrationId(false)
                 val identityKeyPair = KeyHelper.generateIdentityKeyPair()
                 val preKeys = KeyHelper.generatePreKeys(0, 100)
-                val signedPreKey = KeyHelper.generateSignedPreKey(identityKeyPair, 0)
+                val signedPreKeys = (0..99).map { KeyHelper.generateSignedPreKey(identityKeyPair, it) }
 
                 database.identityKeyDao().insert(
                     IdentityKey(
@@ -65,17 +47,43 @@ class SignalRepository(private val context: Context) {
                     store.storePreKey(preKey.id, preKey)
                 }
 
-                store.storeSignedPreKey(signedPreKey.id, signedPreKey)
+                signedPreKeys.forEach { signedPreKey ->
+                    store.storeSignedPreKey(signedPreKey.id, signedPreKey)
+                }
             }
         }
     }
+
+    suspend fun getRegistrationBundle(): RegistrationBundle = withContext(Dispatchers.IO) {
+        val identityKey = database.identityKeyDao().getIdentityKey()!!
+        val preKeys = (0..99).map { store.loadPreKey(it) }
+        val signedPreKeys = (0..99).map { store.loadSignedPreKey(it) }
+
+        RegistrationBundle(
+            identityKey = Base64.encodeToString(identityKey.keyPair, Base64.NO_WRAP),
+            registrationId = identityKey.registrationId,
+            preKeys = preKeys.map { it.toSummary() },
+            signedPreKeys = signedPreKeys.map { it.toSummary() }
+        )
+    }
+
+    private fun PreKeyRecord.toSummary() = PreKeySummary(
+        id = id,
+        publicKey = Base64.encodeToString(keyPair.publicKey.serialize(), Base64.NO_WRAP)
+    )
+
+    private fun SignedPreKeyRecord.toSummary() = SignedPreKeySummary(
+        id = id,
+        publicKey = Base64.encodeToString(keyPair.publicKey.serialize(), Base64.NO_WRAP),
+        signature = Base64.encodeToString(signature, Base64.NO_WRAP)
+    )
 
     suspend fun encrypt(message: String, recipientId: String, deviceId: Int): ByteArray = withContext(Dispatchers.IO) {
         val address = SignalProtocolAddress(recipientId, deviceId)
         val sessionCipher = SessionCipher(store, address)
 
         if (!store.containsSession(address)) {
-            val preKeyBundle = getPreKeyBundleFromServer(recipientId, deviceId)
+            val preKeyBundle = preKeyBundleRepository.getPreKeyBundleFromServer(recipientId, deviceId)
             val sessionBuilder = SessionBuilder(store, address)
             sessionBuilder.process(preKeyBundle)
         }
@@ -99,26 +107,5 @@ class SignalRepository(private val context: Context) {
         }
 
         String(decryptedMessage, Charsets.UTF_8)
-    }
-
-    private suspend fun getPreKeyBundleFromServer(recipientId: String, deviceId: Int): PreKeyBundle {
-        // 10.0.2.2 is the special address for Android Emulator to connect to the host machine's localhost
-        val dto = client.get("http://10.0.2.2:8080/keys/$recipientId/$deviceId").body<PreKeyBundleDto>()
-
-        val preKeyPublic = Base64.decode(dto.preKeyPublic, Base64.DEFAULT)
-        val signedPreKeyPublic = Base64.decode(dto.signedPreKeyPublic, Base64.DEFAULT)
-        val signedPreKeySignature = Base64.decode(dto.signedPreKeySignature, Base64.DEFAULT)
-        val identityKey = Base64.decode(dto.identityKey, Base64.DEFAULT)
-
-        return PreKeyBundle(
-            dto.registrationId,
-            dto.deviceId,
-            dto.preKeyId,
-            Curve.decodePoint(preKeyPublic, 0),
-            dto.signedPreKeyId,
-            Curve.decodePoint(signedPreKeyPublic, 0),
-            signedPreKeySignature,
-            org.whispersystems.libsignal.IdentityKey(identityKey, 0)
-        )
     }
 }
