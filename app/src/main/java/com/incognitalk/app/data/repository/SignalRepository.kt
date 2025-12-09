@@ -11,6 +11,7 @@ import com.incognitalk.app.data.network.ApiServiceImpl
 import com.incognitalk.app.data.network.KtorClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.whispersystems.libsignal.IdentityKeyPair
 import org.whispersystems.libsignal.InvalidMessageException
 import org.whispersystems.libsignal.SessionBuilder
 import org.whispersystems.libsignal.SessionCipher
@@ -55,13 +56,14 @@ class SignalRepository(private val context: Context) {
     }
 
     suspend fun getRegistrationBundle(): RegistrationBundle = withContext(Dispatchers.IO) {
-        val identityKey = database.identityKeyDao().getIdentityKey()!!
+        val identityKeyRecord = database.identityKeyDao().getIdentityKey()!!
+        val identityKeyPair = IdentityKeyPair(identityKeyRecord.keyPair)
         val preKeys = (0..99).map { store.loadPreKey(it) }
         val signedPreKeys = (0..99).map { store.loadSignedPreKey(it) }
 
         RegistrationBundle(
-            identityKey = Base64.encodeToString(identityKey.keyPair, Base64.NO_WRAP),
-            registrationId = identityKey.registrationId,
+            identityKey = Base64.encodeToString(identityKeyPair.publicKey.serialize(), Base64.NO_WRAP),
+            registrationId = identityKeyRecord.registrationId,
             preKeys = preKeys.map { it.toSummary() },
             signedPreKeys = signedPreKeys.map { it.toSummary() }
         )
