@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 data class WebSocketMessage(
     val senderId: String,
     val receiverId: String,
-    val message: String // Base64 encoded
+    val message: String,
+    val deviceId: Int
 )

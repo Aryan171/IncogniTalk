@@ -1,6 +1,7 @@
 package com.incognitalk.app.ui.navigation
 
 import android.app.Application
+import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -35,54 +36,66 @@ fun NavGraph() {
     val db = IncogniTalkDatabase.getDatabase(context)
     val chatRepository = ChatRepository(db.chatDao(), db.messageDao())
 
-    val startDestination = if (user == null) Destinations.Registration else Destinations.Home
-
-    if (user != null) {
-        ChatSocketRepository.init(context)
-        ChatSocketRepository.start()
-    }
-
-    DisposableEffect(Unit) {
+    // Start/Stop WebSocket connection based on user state
+    DisposableEffect(user) {
+        val currentUser = user
+        if (currentUser != null) {
+            ChatSocketRepository.init(context)
+            ChatSocketRepository.start()
+        }
         onDispose {
-            ChatSocketRepository.stop()
+            if (currentUser != null) {
+                ChatSocketRepository.stop()
+            }
         }
     }
 
-    NavHost(navController = navController, startDestination = startDestination) {
-        composable<Destinations.Registration> {
-            RegistrationScreen(
-                onRegistrationSuccess = {
-                    navController.navigate(Destinations.Home) {
-                        popUpTo(Destinations.Registration) { inclusive = true }
+    // Show loading screen or main content based on user state
+    Crossfade(targetState = user) { targetUser ->
+        when (targetUser) {
+            null -> {
+                // You could show a full-screen loading spinner here
+            }
+            else -> {
+                val startDestination = if (targetUser.username.isNotBlank()) Destinations.Home else Destinations.Registration
+                NavHost(navController = navController, startDestination = startDestination) {
+                    composable<Destinations.Registration> {
+                        RegistrationScreen(
+                            onRegistrationSuccess = {
+                                navController.navigate(Destinations.Home) {
+                                    popUpTo(Destinations.Registration) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable<Destinations.Home> {
+                        val homeViewModel: HomeScreenViewModel = viewModel(
+                            factory = HomeScreenViewModelFactory(chatRepository)
+                        )
+                        HomeScreen(
+                            onInfoClick = { navController.navigate(Destinations.Info) },
+                            onChatClick = { chatName -> navController.navigate(Destinations.Chat(chatName)) },
+                            homeScreenViewModel = homeViewModel
+                        )
+                    }
+                    composable<Destinations.Info> {
+                        InformationScreen(
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
+                    composable<Destinations.Chat> {
+                        val args = it.toRoute<Destinations.Chat>()
+                        val chatViewModel: ChatViewModel = viewModel(
+                            factory = ChatViewModelFactory(context.applicationContext as Application, chatRepository, args.chatName)
+                        )
+                        ChatScreen(
+                            chatName = args.chatName,
+                            onBackClick = { navController.popBackStack() },
+                            chatViewModel = chatViewModel
+                        )
                     }
                 }
-            )
-        }
-        composable<Destinations.Home> {
-            val homeViewModel: HomeScreenViewModel = viewModel(
-                factory = HomeScreenViewModelFactory(chatRepository)
-            )
-            HomeScreen(
-                onInfoClick = { navController.navigate(Destinations.Info) },
-                onChatClick = { chatName -> navController.navigate(Destinations.Chat(chatName)) },
-                homeScreenViewModel = homeViewModel
-            )
-        }
-        composable<Destinations.Info> {
-            InformationScreen(
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-        composable<Destinations.Chat> {
-            val args = it.toRoute<Destinations.Chat>()
-            val chatViewModel: ChatViewModel = viewModel(
-                factory = ChatViewModelFactory(context.applicationContext as Application, chatRepository, args.chatName)
-            )
-            ChatScreen(
-                chatName = args.chatName,
-                onBackClick = { navController.popBackStack() },
-                chatViewModel = chatViewModel
-            )
+            }
         }
     }
 }

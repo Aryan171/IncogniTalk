@@ -10,9 +10,7 @@ import com.incognitalk.app.data.model.User
 import com.incognitalk.app.data.repository.UserRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.runBlocking
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val userRepository: UserRepository
@@ -25,7 +23,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val user: StateFlow<User?> = userRepository.getUser().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = runBlocking { userRepository.getUser().first() } // Run blocking to get initial value
+        initialValue = null // Initial value is null, UI will show a loading state.
     )
 }
 
