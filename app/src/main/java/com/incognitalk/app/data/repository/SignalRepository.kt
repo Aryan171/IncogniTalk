@@ -95,14 +95,15 @@ class SignalRepository(private val context: Context) {
         val identityKeyRecord = database.identityKeyDao().getIdentityKey()!!
         val identityKeyPair = IdentityKeyPair(identityKeyRecord.keyPair)
         val preKeys = (0..99).map { store.loadPreKey(it) }
-        // There is only one signed pre key now
         val signedPreKey = store.loadSignedPreKey(1)
+        val deviceId = 1 // FLAW: Hardcoded device ID
 
         RegistrationBundle(
             identityKey = Base64.encodeToString(identityKeyPair.publicKey.serialize(), Base64.NO_WRAP),
             registrationId = identityKeyRecord.registrationId,
             preKeys = preKeys.associate { it.id.toString() to Base64.encodeToString(it.keyPair.publicKey.serialize(), Base64.NO_WRAP) },
-            signedPreKey = signedPreKey.toSummary()
+            signedPreKey = signedPreKey.toSummary(),
+            deviceId = deviceId
         )
     }
 

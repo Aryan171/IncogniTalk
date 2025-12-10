@@ -6,8 +6,9 @@ import kotlinx.serialization.Serializable
 data class RegistrationBundle(
     val identityKey: String,
     val registrationId: Int,
-    val preKeys: Map<String, String>, // Changed from a list to a map
-    val signedPreKey: SignedPreKeySummary
+    val preKeys: Map<String, String>,
+    val signedPreKey: SignedPreKeySummary,
+    val deviceId: Int // Added deviceId
 )
 
 @Serializable

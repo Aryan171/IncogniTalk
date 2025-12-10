@@ -1,4 +1,4 @@
-package com.incognitalk.app.data.network
+﻿package com.incognitalk.app.data.network
 
 import com.incognitalk.app.data.model.PreKeyBundleDto
 import com.incognitalk.app.data.model.RegisterRequest
